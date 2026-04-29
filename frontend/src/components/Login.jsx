@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { performLogin } from '../actions/authActions';
 import appDispatcher, { ACTION_TYPES } from '../appDispatcher';
@@ -8,9 +8,20 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check for success message from registration
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccess(location.state.message);
+      // Clear the location state to avoid persisting the message
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location]);
 
   const validateForm = () => {
     if (!email.trim()) {
@@ -77,6 +88,11 @@ export default function Login() {
               <h1 className="h4 mb-0">Iniciar Sesión</h1>
             </header>
             <div className="card-body">
+              {success && (
+                <div className="alert alert-success" role="alert">
+                  {success}
+                </div>
+              )}
               {error && (
                 <div className="alert alert-danger" role="alert">
                   {error}
@@ -129,9 +145,17 @@ export default function Login() {
                     'Iniciar Sesión'
                   )}
                 </button>
-              </form>
-            </div>
-          </article>
+               </form>
+               <div className="text-center mt-3">
+                 <small>
+                   ¿No tenés cuenta?{' '}
+                   <Link to="/register" className="text-decoration-none">
+                     Registrate aquí
+                   </Link>
+                 </small>
+               </div>
+             </div>
+           </article>
         </div>
       </div>
     </section>
