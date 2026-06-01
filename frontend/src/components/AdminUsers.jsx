@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 const ROLE_LABELS = {
   admin: 'Administrador',
   tecnico: 'Técnico',
-  visor: 'Visor',
+  visor: 'Usuario',
 };
 
 const ROLE_BADGES = {
@@ -166,7 +166,7 @@ export default function AdminUsers() {
                     required
                   >
                     <option value="tecnico">Técnico</option>
-                    <option value="visor">Visor</option>
+                    <option value="visor">Usuario</option>
                     <option value="admin">Administrador</option>
                   </select>
                 </div>
