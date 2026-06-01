@@ -100,6 +100,14 @@ export default function Dashboard() {
             >
               Incidencias
             </button>
+            {user?.role === 'admin' && (
+              <button
+                className="nav-link btn btn-link"
+                onClick={() => navigate('/admin/users')}
+              >
+                Usuarios
+              </button>
+            )}
           </div>
           <div className="navbar-nav">
             <span className="navbar-text me-3">

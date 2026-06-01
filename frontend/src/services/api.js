@@ -53,6 +53,12 @@ export const incidentsAPI = {
   update: (id, data) => api.put(`/api/incidents/${id}`, data),
 };
 
+// Admin API calls
+export const adminAPI = {
+  listUsers: () => api.get('/api/auth/users'),
+  createUser: (userData) => api.post('/api/auth/users', userData),
+};
+
 // Notifications API calls
 export const notificationsAPI = {
   sendSMS: (incidentId) => api.post('/api/notifications/sms', { incident_id: incidentId }),

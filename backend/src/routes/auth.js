@@ -139,4 +139,83 @@ function authenticateToken(req, res, next) {
   });
 }
 
+// Middleware to require admin role
+function requireAdmin(req, res, next) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
+// GET /api/auth/users - Admin: list all users
+router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const users = await db.async.all(
+      'SELECT id, username, role FROM users ORDER BY id ASC'
+    );
+    res.json({ users });
+  } catch (error) {
+    console.error('List users error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/auth/users - Admin: create user with role
+router.post('/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { email, password, nombre, role } = req.body;
+
+    // Validate input
+    if (!email || !password || !role) {
+      return res.status(400).json({ error: 'Email, password and role are required' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    const validRoles = ['admin', 'tecnico', 'visor'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: `Role must be one of: ${validRoles.join(', ')}` });
+    }
+
+    // Check if user exists
+    const existingUser = await db.async.get(
+      'SELECT id FROM users WHERE username = ?',
+      [email]
+    );
+
+    if (existingUser) {
+      return res.status(409).json({ error: 'User already exists' });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+    // Create user
+    const result = await db.async.run(
+      'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
+      [email, passwordHash, role]
+    );
+
+    // Get created user
+    const user = await db.async.get(
+      'SELECT id, username, role FROM users WHERE id = ?',
+      [result.lastID]
+    );
+
+    res.status(201).json({
+      user: {
+        id: user.id,
+        email: user.username,
+        role: user.role,
+        nombre: nombre || user.username
+      }
+    });
+  } catch (error) {
+    console.error('Admin create user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = { router, authenticateToken };
