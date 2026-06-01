@@ -171,9 +171,12 @@ export default function AdminUsers() {
                   </select>
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-3 d-flex gap-2">
                 <button type="submit" className="btn btn-success" disabled={submitting}>
                   {submitting ? 'Creando...' : 'Crear Usuario'}
+                </button>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setShowForm(false)}>
+                  Salir
                 </button>
               </div>
             </form>
