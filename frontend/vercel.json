@@ -6,7 +6,7 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "https://incidencias-it-backend.onrender.com"
+    "VITE_API_URL": "https://incidencias-it.onrender.com"
   },
   "buildCommand": "npm run build",
   "outputDirectory": "dist",

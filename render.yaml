@@ -24,6 +24,10 @@ services:
         sync: false  # Set manually in Render dashboard
       - key: TECHNICIAN_PHONE
         sync: false  # Set manually in Render dashboard
+      - key: ADMIN_EMAIL
+        value: admin@incidencias.com  # Default admin email (used when no admin exists)
+      - key: ADMIN_PASSWORD
+        value: Admin12345  # Default admin password (used when no admin exists)
     numInstances: 1
     autoDeploy: true
     branch: main  # Change if using a different branch
