@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -15,7 +16,8 @@ const ROLE_BADGES = {
 };
 
 export default function AdminUsers() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -91,10 +93,59 @@ export default function AdminUsers() {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <section aria-label="Administración de Usuarios">
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      {/* Navigation Header */}
+      <nav className="navbar navbar-expand navbar-dark bg-dark mb-4" role="navigation">
+        <div className="container-fluid">
+          <a className="navbar-brand" href="/dashboard">Incidencias IT</a>
+          <div className="navbar-nav me-auto">
+            <button
+              className="nav-link btn btn-link"
+              onClick={() => navigate('/dashboard')}
+            >
+              Dashboard
+            </button>
+            <button
+              className="nav-link btn btn-link"
+              onClick={() => navigate('/incidents')}
+            >
+              Incidencias
+            </button>
+            {user?.role === 'admin' && (
+              <button
+                className="nav-link btn btn-link active"
+                onClick={() => navigate('/admin/users')}
+              >
+                Usuarios
+              </button>
+            )}
+          </div>
+          <div className="navbar-nav">
+            <span className="navbar-text me-3">
+              {user?.nombre || user?.email}
+              {user?.role && (
+                <span className="badge bg-info ms-2">{user.role}</span>
+              )}
+            </span>
+            <button
+              className="btn btn-outline-light btn-sm"
+              onClick={handleLogout}
+            >
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <div className="container-fluid">
+        {/* Header */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="h4 mb-0">Gestión de Usuarios</h2>
         <button
           className="btn btn-success"
@@ -224,6 +275,7 @@ export default function AdminUsers() {
           </table>
         </div>
       )}
+      </div>
     </section>
   );
 }
