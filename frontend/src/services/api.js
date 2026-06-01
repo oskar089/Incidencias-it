@@ -57,6 +57,7 @@ export const incidentsAPI = {
 export const adminAPI = {
   listUsers: () => api.get('/api/auth/users'),
   createUser: (userData) => api.post('/api/auth/users', userData),
+  deleteUser: (id) => api.delete(`/api/auth/users/${id}`),
 };
 
 // Notifications API calls

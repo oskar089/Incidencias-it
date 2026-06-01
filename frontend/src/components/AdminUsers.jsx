@@ -30,6 +30,7 @@ export default function AdminUsers() {
     role: 'tecnico',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -90,6 +91,26 @@ export default function AdminUsers() {
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (targetUser) => {
+    if (!window.confirm(`¿Estás seguro de eliminar al usuario ${targetUser.username}?`)) {
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setDeletingId(targetUser.id);
+
+    try {
+      await adminAPI.deleteUser(targetUser.id);
+      setSuccess(`Usuario ${targetUser.username} eliminado correctamente`);
+      loadUsers();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al eliminar usuario');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -252,6 +273,7 @@ export default function AdminUsers() {
                 <th scope="col">#</th>
                 <th scope="col">Email</th>
                 <th scope="col">Rol</th>
+                <th scope="col">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -268,6 +290,22 @@ export default function AdminUsers() {
                     <span className={`badge ${ROLE_BADGES[u.role] || 'bg-secondary'}`}>
                       {ROLE_LABELS[u.role] || u.role}
                     </span>
+                  </td>
+                  <td>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => handleDelete(u)}
+                      disabled={u.username === user?.email || deletingId === u.id}
+                    >
+                      {deletingId === u.id ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                          Eliminando...
+                        </>
+                      ) : (
+                        'Eliminar'
+                      )}
+                    </button>
                   </td>
                 </tr>
               ))}

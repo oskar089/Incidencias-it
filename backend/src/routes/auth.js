@@ -218,4 +218,33 @@ router.post('/users', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
+// DELETE /api/auth/users/:id - Admin: delete a user
+router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Do not allow deleting yourself
+    if (parseInt(id) === req.user.userId) {
+      return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
+    }
+
+    // Check if user exists
+    const user = await db.async.get(
+      'SELECT id FROM users WHERE id = ?',
+      [id]
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    await db.async.run('DELETE FROM users WHERE id = ?', [id]);
+
+    res.json({ message: 'Usuario eliminado correctamente' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = { router, authenticateToken };
