@@ -13,10 +13,7 @@ router.post('/sms', async (req, res) => {
     }
     
     // Get incident details
-    const incident = await db.async.get(
-      'SELECT * FROM tickets WHERE id = ?',
-      [incident_id]
-    );
+    const incident = await db.async.get('tickets', '*', { id: parseInt(incident_id) });
     
     if (!incident) {
       return res.status(404).json({ error: 'Incident not found' });
@@ -55,11 +52,13 @@ router.post('/sms', async (req, res) => {
       });
       
       // Log notification
-      await db.async.run(
-        `INSERT INTO notifications (ticket_id, type, recipient, status, sent_at)
-         VALUES (?, 'sms', ?, 'sent', datetime('now'))`,
-        [incident.id, technicianPhone]
-      );
+      await db.async.run('notifications', {
+        ticket_id: incident.id,
+        type: 'sms',
+        recipient: technicianPhone,
+        status: 'sent',
+        sent_at: new Date().toISOString()
+      });
       
       res.json({
         success: true,
@@ -70,11 +69,13 @@ router.post('/sms', async (req, res) => {
       console.error('Twilio error:', twilioError);
       
       // Log failed notification
-      await db.async.run(
-        `INSERT INTO notifications (ticket_id, type, recipient, status, sent_at)
-         VALUES (?, 'sms', ?, 'failed', datetime('now'))`,
-        [incident.id, technicianPhone || 'unknown']
-      );
+      await db.async.run('notifications', {
+        ticket_id: incident.id,
+        type: 'sms',
+        recipient: technicianPhone || 'unknown',
+        status: 'failed',
+        sent_at: new Date().toISOString()
+      });
       
       return res.status(500).json({ 
         success: false, 

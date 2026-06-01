@@ -1,116 +1,131 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const fs = require('fs');
+const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcrypt');
 
-// Get database path from environment or use default
-const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '..', '..', 'data', 'helpdesk.db');
+// Supabase config from environment
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Ensure the data directory exists
-const dataDir = path.dirname(dbPath);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables');
+  process.exit(1);
 }
 
-// Initialize database connection
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to database at', dbPath);
-  }
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: { persistSession: false },
 });
 
-// Read and execute schema.sql if tables don't exist, then seed default admin
-const schemaPath = path.join(__dirname, 'schema.sql');
-const SALT_ROUNDS = 12;
+console.log('Connected to Supabase at', supabaseUrl);
 
-db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='users'", async (err, row) => {
-  if (err) {
-    console.error('Error checking schema:', err.message);
-  } else if (!row && fs.existsSync(schemaPath)) {
-    // Schema doesn't exist, create it
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    db.exec(schema, async (err) => {
-      if (err) {
-        console.error('Error initializing schema:', err.message);
-      } else {
-        console.log('Database schema initialized');
-        await seedDefaultAdmin();
-      }
-    });
-  } else {
-    console.log('Database schema already exists');
-    // Ensure at least one admin exists on every startup
-    await seedDefaultAdmin();
-  }
-});
-
-async function seedDefaultAdmin() {
+// Seed default admin on startup
+(async () => {
   try {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@incidencias.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'Admin12345';
 
-    const existingAdmin = await new Promise((resolve, reject) => {
-      db.get('SELECT id FROM users WHERE role = ?', ['admin'], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+    const { data: existingAdmin, error: checkError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('role', 'admin')
+      .limit(1);
 
-    if (!existingAdmin) {
-      const passwordHash = await bcrypt.hash(adminPassword, SALT_ROUNDS);
-      await new Promise((resolve, reject) => {
-        db.run('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
-          [adminEmail, passwordHash, 'admin'],
-          function(err) { if (err) reject(err); else resolve(this); }
-        );
-      });
+    if (checkError) throw checkError;
+
+    if (!existingAdmin || existingAdmin.length === 0) {
+      const saltRounds = 12;
+      const passwordHash = await bcrypt.hash(adminPassword, saltRounds);
+
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({ username: adminEmail, password_hash: passwordHash, role: 'admin' });
+
+      if (insertError) throw insertError;
       console.log(`Default admin user created: ${adminEmail}`);
     }
   } catch (error) {
     console.error('Error seeding default admin:', error.message);
   }
-}
+})();
 
-// Promisify db methods for async/await usage
+// Supabase-based async helpers — same interface as before
 const dbAsync = {
-  run: (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-      db.run(sql, params, function(err) {
-        if (err) reject(err);
-        else resolve({ lastID: this.lastID, changes: this.changes });
-      });
-    });
+  // Get a single row
+  async get(table, columns = '*', filters = {}) {
+    let query = supabase.from(table).select(columns);
+    for (const [key, value] of Object.entries(filters)) {
+      query = query.eq(key, value);
+    }
+    const { data, error } = await query.maybeSingle();
+    if (error) throw error;
+    return data; // null if not found
   },
-  get: (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-      db.get(sql, params, (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
-      });
-    });
+
+  // Get all rows
+  async all(table, columns = '*', filters = {}, options = {}) {
+    let query = supabase.from(table).select(columns);
+    for (const [key, value] of Object.entries(filters)) {
+      query = query.eq(key, value);
+    }
+    if (options.orderBy) {
+      query = query.order(options.orderBy, { ascending: options.ascending ?? false });
+    }
+    if (options.limit) {
+      query = query.range(options.offset || 0, (options.offset || 0) + options.limit - 1);
+    }
+    if (options.gte) {
+      for (const [key, value] of Object.entries(options.gte)) {
+        query = query.gte(key, value);
+      }
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
   },
-  all: (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-      db.all(sql, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    });
+
+  // Insert a row
+  async run(table, data) {
+    const { data: result, error } = await supabase
+      .from(table)
+      .insert(data)
+      .select('id');
+    if (error) throw error;
+    return { lastID: result?.[0]?.id, changes: result?.length || 0 };
   },
-  exec: (sql) => {
-    return new Promise((resolve, reject) => {
-      db.exec(sql, (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-  }
+
+  // Update rows
+  async update(table, data, filters = {}) {
+    let query = supabase.from(table).update(data);
+    for (const [key, value] of Object.entries(filters)) {
+      query = query.eq(key, value);
+    }
+    const { data: result, error } = await query.select();
+    if (error) throw error;
+    return { changes: result?.length || 0 };
+  },
+
+  // Delete rows
+  async remove(table, filters = {}) {
+    let query = supabase.from(table).delete();
+    for (const [key, value] of Object.entries(filters)) {
+      query = query.eq(key, value);
+    }
+    const { error } = await query;
+    if (error) throw error;
+    return { changes: 1 };
+  },
+
+  // Raw count query — returns { total: number }
+  async count(table, filters = {}) {
+    let query = supabase.from(table).select('id', { count: 'exact', head: true });
+    for (const [key, value] of Object.entries(filters)) {
+      query = query.eq(key, value);
+    }
+    const { count, error } = await query;
+    if (error) throw error;
+    return { total: count || 0 };
+  },
 };
 
-// Export the database instance with async helpers
 module.exports = {
-  db,
-  async: dbAsync
+  db: supabase,
+  async: dbAsync,
 };

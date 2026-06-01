@@ -12,10 +12,12 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true  # Render will generate a secure random string
-      - key: DATABASE_PATH
-        value: ./data/helpdesk.db
       - key: FRONTEND_URL
-        value: https://incidencias-it-frontend.vercel.app  # UPDATE THIS after frontend deployment
+        value: https://incidencias-it-frontend.vercel.app
+      - key: SUPABASE_URL
+        sync: false  # Set manually in Render dashboard
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false  # Set manually in Render dashboard
       - key: TWILIO_ACCOUNT_SID
         sync: false  # Set manually in Render dashboard
       - key: TWILIO_AUTH_TOKEN
@@ -25,14 +27,9 @@ services:
       - key: TECHNICIAN_PHONE
         sync: false  # Set manually in Render dashboard
       - key: ADMIN_EMAIL
-        value: admin@incidencias.com  # Default admin email (used when no admin exists)
+        value: admin@incidencias.com
       - key: ADMIN_PASSWORD
-        value: Admin12345  # Default admin password (used when no admin exists)
+        value: Admin12345
     numInstances: 1
     autoDeploy: true
-    branch: main  # Change if using a different branch
-
-databases:
-  - name: helpdesk-db
-    databaseName: helpdesk
-    plan: free
+    branch: main

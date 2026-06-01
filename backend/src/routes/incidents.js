@@ -10,38 +10,25 @@ router.get('/', authenticateToken, async (req, res) => {
     const { status, priority, page = 1, limit = 10 } = req.query;
     
     const offset = (page - 1) * limit;
-    const params = [];
-    const conditions = [];
+    const filters = {};
     
-    if (status) {
-      conditions.push('status = ?');
-      params.push(status);
-    }
-    
-    if (priority) {
-      conditions.push('priority = ?');
-      params.push(priority);
-    }
-    
-    const whereClause = conditions.length > 0 
-      ? 'WHERE ' + conditions.join(' AND ')
-      : '';
+    if (status) filters.status = status;
+    if (priority) filters.priority = priority;
     
     // Get total count
-    const countRow = await db.async.get(
-      `SELECT COUNT(*) as total FROM tickets ${whereClause}`,
-      params
-    );
+    const countResult = await db.async.count('tickets', filters);
     
     // Get incidents
-    const incidents = await db.async.all(
-      `SELECT * FROM tickets ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), parseInt(offset)]
-    );
+    const incidents = await db.async.all('tickets', '*', filters, {
+      orderBy: 'created_at',
+      ascending: false,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
     
     res.json({
       data: incidents,
-      total: countRow.total,
+      total: countResult.total,
       page: parseInt(page),
       limit: parseInt(limit)
     });
@@ -54,10 +41,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // GET /api/incidents/:id - Get single incident
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const incident = await db.async.get(
-      'SELECT * FROM tickets WHERE id = ?',
-      [req.params.id]
-    );
+    const incident = await db.async.get('tickets', '*', { id: parseInt(req.params.id) });
     
     if (!incident) {
       return res.status(404).json({ error: 'Incident not found' });
@@ -79,16 +63,17 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Title and description are required' });
     }
     
-    const result = await db.async.run(
-      `INSERT INTO tickets (title, description, status, priority, category, reporter, assignee, created_at, updated_at)
-       VALUES (?, ?, 'open', ?, ?, ?, NULL, datetime('now'), datetime('now'))`,
-      [title, description, priority || 'medium', type || 'Other', req.user.email, req.user.email]
-    );
+    const result = await db.async.run('tickets', {
+      title,
+      description,
+      status: 'open',
+      priority: priority || 'medium',
+      category: type || 'Other',
+      reporter: req.user.email,
+      assignee: null
+    });
     
-    const incident = await db.async.get(
-      'SELECT * FROM tickets WHERE id = ?',
-      [result.lastID]
-    );
+    const incident = await db.async.get('tickets', '*', { id: result.lastID });
     
     res.status(201).json(incident);
   } catch (error) {
@@ -101,47 +86,28 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { status, tecnico_id } = req.body;
-    const incidentId = req.params.id;
+    const incidentId = parseInt(req.params.id);
     
     // Get current incident
-    const currentIncident = await db.async.get(
-      'SELECT * FROM tickets WHERE id = ?',
-      [incidentId]
-    );
+    const currentIncident = await db.async.get('tickets', '*', { id: incidentId });
     
     if (!currentIncident) {
       return res.status(404).json({ error: 'Incident not found' });
     }
     
-    // Build update query
-    const updates = [];
-    const params = [];
+    // Build update data
+    const updateData = {};
     
-    if (status) {
-      updates.push('status = ?');
-      params.push(status);
-    }
+    if (status) updateData.status = status;
+    if (tecnico_id !== undefined) updateData.assignee = tecnico_id;
     
-    if (tecnico_id !== undefined) {
-      updates.push('assignee = ?');
-      params.push(tecnico_id);
-    }
+    updateData.updated_at = new Date().toISOString();
     
-    updates.push("updated_at = datetime('now')");
+    await db.async.update('tickets', updateData, { id: incidentId });
     
-    params.push(incidentId);
+    const updatedIncident = await db.async.get('tickets', '*', { id: incidentId });
     
-    await db.async.run(
-      `UPDATE tickets SET ${updates.join(', ')} WHERE id = ?`,
-      params
-    );
-    
-    const updatedIncident = await db.async.get(
-      'SELECT * FROM tickets WHERE id = ?',
-      [incidentId]
-    );
-    
-    // Trigger SMS if status changed to "assigned" (in our case "in_progress")
+    // Trigger SMS if status changed to "in_progress"
     if (status === 'in_progress' && currentIncident.status !== 'in_progress') {
       // Trigger SMS notification asynchronously
       triggerSMSNotification(updatedIncident).catch(err => {
@@ -190,22 +156,26 @@ async function triggerSMSNotification(incident) {
     });
     
     // Log notification
-    await db.async.run(
-      `INSERT INTO notifications (ticket_id, type, recipient, status, sent_at)
-       VALUES (?, 'sms', ?, 'sent', datetime('now'))`,
-      [incident.id, technicianPhone]
-    );
+    await db.async.run('notifications', {
+      ticket_id: incident.id,
+      type: 'sms',
+      recipient: technicianPhone,
+      status: 'sent',
+      sent_at: new Date().toISOString()
+    });
     
     console.log(`SMS sent for incident #${incident.id}`);
   } catch (error) {
     console.error('Twilio SMS error:', error);
     
     // Log failed notification
-    await db.async.run(
-      `INSERT INTO notifications (ticket_id, type, recipient, status, sent_at)
-       VALUES (?, 'sms', 'unknown', 'failed', datetime('now'))`,
-      [incident.id]
-    );
+    await db.async.run('notifications', {
+      ticket_id: incident.id,
+      type: 'sms',
+      recipient: 'unknown',
+      status: 'failed',
+      sent_at: new Date().toISOString()
+    });
   }
 }
 

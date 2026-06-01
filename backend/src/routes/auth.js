@@ -24,11 +24,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if user exists
-    const existingUser = await db.async.get(
-      'SELECT id FROM users WHERE username = ?',
-      [email]
-    );
-
+    const existingUser = await db.async.get('users', 'id', { username: email });
     if (existingUser) {
       return res.status(409).json({ error: 'User already exists' });
     }
@@ -37,16 +33,14 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
     // Create user
-    const result = await db.async.run(
-      'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
-      [email, passwordHash, role || 'client']
-    );
+    const result = await db.async.run('users', {
+      username: email,
+      password_hash: passwordHash,
+      role: role || 'client'
+    });
 
     // Get created user
-    const user = await db.async.get(
-      'SELECT id, username, role FROM users WHERE id = ?',
-      [result.lastID]
-    );
+    const user = await db.async.get('users', 'id, username, role', { id: result.lastID });
 
     // Generate JWT
     const token = jwt.sign(
@@ -82,10 +76,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Find user
-    const user = await db.async.get(
-      'SELECT id, username, password_hash, role FROM users WHERE username = ?',
-      [email]
-    );
+    const user = await db.async.get('users', 'id, username, password_hash, role', { username: email });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -150,9 +141,7 @@ function requireAdmin(req, res, next) {
 // GET /api/auth/users - Admin: list all users
 router.get('/users', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const users = await db.async.all(
-      'SELECT id, username, role FROM users ORDER BY id ASC'
-    );
+    const users = await db.async.all('users', 'id, username, role', {}, { orderBy: 'id', ascending: true });
     res.json({ users });
   } catch (error) {
     console.error('List users error:', error);
@@ -180,11 +169,7 @@ router.post('/users', authenticateToken, requireAdmin, async (req, res) => {
     }
 
     // Check if user exists
-    const existingUser = await db.async.get(
-      'SELECT id FROM users WHERE username = ?',
-      [email]
-    );
-
+    const existingUser = await db.async.get('users', 'id', { username: email });
     if (existingUser) {
       return res.status(409).json({ error: 'User already exists' });
     }
@@ -193,16 +178,14 @@ router.post('/users', authenticateToken, requireAdmin, async (req, res) => {
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
     // Create user
-    const result = await db.async.run(
-      'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
-      [email, passwordHash, role]
-    );
+    const result = await db.async.run('users', {
+      username: email,
+      password_hash: passwordHash,
+      role
+    });
 
     // Get created user
-    const user = await db.async.get(
-      'SELECT id, username, role FROM users WHERE id = ?',
-      [result.lastID]
-    );
+    const user = await db.async.get('users', 'id, username, role', { id: result.lastID });
 
     res.status(201).json({
       user: {
@@ -222,24 +205,20 @@ router.post('/users', authenticateToken, requireAdmin, async (req, res) => {
 router.delete('/users/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = parseInt(id);
 
     // Do not allow deleting yourself
-    if (parseInt(id) === req.user.userId) {
+    if (userId === req.user.userId) {
       return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
     }
 
     // Check if user exists
-    const user = await db.async.get(
-      'SELECT id FROM users WHERE id = ?',
-      [id]
-    );
-
+    const user = await db.async.get('users', 'id', { id: userId });
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    await db.async.run('DELETE FROM users WHERE id = ?', [id]);
-
+    await db.async.remove('users', { id: userId });
     res.json({ message: 'Usuario eliminado correctamente' });
   } catch (error) {
     console.error('Delete user error:', error);
