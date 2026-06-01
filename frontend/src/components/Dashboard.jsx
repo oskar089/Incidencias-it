@@ -126,55 +126,55 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="container-fluid">
+      <div className="container-fluid main-content">
         {/* Stats Cards */}
         <section aria-label="Estadísticas" className="mb-4">
           <h2 className="h5 mb-3">Resumen de Incidencias</h2>
           <div className="row g-3">
             <div className="col-6 col-md-2">
-              <article className="card bg-primary text-white">
+              <article className="card bg-primary text-white stat-card">
                 <div className="card-body text-center">
-                  <h3 className="card-title h2">{stats.total}</h3>
+                  <h3 className="card-title">{stats.total}</h3>
                   <p className="card-text">Total</p>
                 </div>
               </article>
             </div>
             <div className="col-6 col-md-2">
-              <article className="card bg-warning">
+              <article className="card bg-warning stat-card">
                 <div className="card-body text-center">
-                  <h3 className="card-title h2">{stats.nueva}</h3>
+                  <h3 className="card-title">{stats.nueva}</h3>
                   <p className="card-text">Nuevas</p>
                 </div>
               </article>
             </div>
             <div className="col-6 col-md-2">
-              <article className="card bg-info text-white">
+              <article className="card bg-info text-white stat-card">
                 <div className="card-body text-center">
-                  <h3 className="card-title h2">{stats.asignada}</h3>
+                  <h3 className="card-title">{stats.asignada}</h3>
                   <p className="card-text">Asignadas</p>
                 </div>
               </article>
             </div>
             <div className="col-6 col-md-2">
-              <article className="card bg-primary text-white">
+              <article className="card bg-primary text-white stat-card">
                 <div className="card-body text-center">
-                  <h3 className="card-title h2">{stats.enProgreso}</h3>
+                  <h3 className="card-title">{stats.enProgreso}</h3>
                   <p className="card-text">En Progreso</p>
                 </div>
               </article>
             </div>
             <div className="col-6 col-md-2">
-              <article className="card bg-success text-white">
+              <article className="card bg-success text-white stat-card">
                 <div className="card-body text-center">
-                  <h3 className="card-title h2">{stats.resuelta}</h3>
+                  <h3 className="card-title">{stats.resuelta}</h3>
                   <p className="card-text">Resueltas</p>
                 </div>
               </article>
             </div>
             <div className="col-6 col-md-2">
-              <article className="card bg-secondary text-white">
+              <article className="card bg-secondary text-white stat-card">
                 <div className="card-body text-center">
-                  <h3 className="card-title h2">{stats.cerrada}</h3>
+                  <h3 className="card-title">{stats.cerrada}</h3>
                   <p className="card-text">Cerradas</p>
                 </div>
               </article>

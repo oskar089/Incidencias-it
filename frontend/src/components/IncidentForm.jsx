@@ -127,7 +127,7 @@ export default function IncidentForm() {
         </div>
       </nav>
 
-      <div className="container-fluid">
+      <div className="container-fluid main-content">
         <article className="card shadow">
           <header className="card-header">
             <h1 className="h4 mb-0">Nueva Incidencia</h1>

@@ -176,7 +176,7 @@ export default function IncidentDetail() {
         </div>
       </nav>
 
-      <div className="container-fluid">
+      <div className="container-fluid main-content">
         {/* Success/Error Messages */}
         {success && (
           <div className="alert alert-success alert-dismissible fade show" role="alert">

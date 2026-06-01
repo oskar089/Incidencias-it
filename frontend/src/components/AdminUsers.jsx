@@ -164,7 +164,7 @@ export default function AdminUsers() {
         </div>
       </nav>
 
-      <div className="container-fluid">
+      <div className="container-fluid main-content">
         {/* Header */}
         <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="h4 mb-0">Gestión de Usuarios</h2>

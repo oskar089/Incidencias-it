@@ -117,7 +117,7 @@ export default function IncidentList() {
         </div>
       </nav>
 
-      <div className="container-fluid">
+      <div className="container-fluid main-content">
         {/* Filters */}
         <section aria-label="Filtros" className="mb-4">
           <div className="card">
